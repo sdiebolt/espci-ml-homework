@@ -57,8 +57,10 @@
       \vspace{1.5cm}
  
       \textbf{Samuel Diebolt}
+
+      \vspace{0.8cm}
  
-      \vfill
+      \includegraphics[width=0.7\textwidth]{readdigits}
  
       \vspace{0.8cm}
 
@@ -1487,4 +1489,347 @@ fig.show()
     \caption{$t$-SNE visualization of handwritten digits.}%
     \label{fig:digitstsne}
   \end{figure} 
+
+  As we can see, $t$-SNE does an impressive job at finding clusters compared to
+  PCA\@. However, it is still prone to getting stuck in local minima, as is the
+  case for some images of ones.
+
+  We can now perform $K$-means clustering and visualize its performance using
+  $t$-SNE compared to Figure~\ref{fig:digitstsne}. The clustering is performed
+  in Listing~\ref{lst:kmeans1} using $K = 10$ clusters (for the 10 available
+  digits) and the results of 10 different initial conditions are displayed on
+  Figure~\ref{fig:kmeans1}.  These initial conditions should not be chosen
+  based on the $t$-SNE results, since neither distances nor density are
+  preserved well (E. Schubert \textit{et al.}, 2017).  Therefore, initial
+  cluster centroids will be selected at random from the observations. 
+
+  To evaluate the clustering performance, two criterion will be compared:
+  \begin{itemize}
+    \item the intertia, corresponding to the sum of distances of samples to
+      their closest cluster center;
+    \item an arbitrary score, corresponding to the fraction of pairs of samples
+      that are correctly partitioned.
+  \end{itemize}
+
+  \begin{lstlisting}[caption={Perform $K$-means clustering and compare
+    performance between random initializations.}, captionpos=b,
+    label={lst:kmeans1}]
+# Store scores as defined by the exercise, and k-means inertias.
+scores = []
+inertias = []
+for cond in range(10):
+  # Perform k-means, using a fixed random state for reproducibility.
+  kmeans = KMeans(n_clusters=10, init="random", n_init=1, random_state=cond).fit(X_norm)
+  labels = kmeans.labels_
+  
+  # Compute clustering score.
+  digit_pairs = np.zeros((n, n))
+  for i in range(0, n):
+    for j in range(i+1, n):
+      digit_pairs[i,j] = (labels[i]==labels[j] and y[i]== y[j]) or (labels[i]!=labels[j] and y[i]!=y[j])
+  scores.append(100*np.sum(digit_pairs)*2/(n*(n-1))) 
+  inertias.append(kmeans.inertia_)
+
+print("Minimum score: {:.2f}%".format(np.min(scores)))
+print("Maximum score: {:.2f}%".format(np.max(scores)))
+
+# Plot normalized criteria.
+fig = go.Figure()
+
+fig.add_trace(go.Bar(
+  x=list(range(1, 10)),
+  y=(scores - np.mean(scores)) / np.std(scores),
+  name="Clustering Score"
+))
+
+fig.add_trace(go.Bar(
+  x=list(range(1, 10)),
+  y=(inertias - np.mean(inertias)) / np.std(inertias),
+  name="Clustering Inertia"
+))
+
+fig.update_layout(
+  title="Normalized Clustering Score And Inertia",
+  xaxis_title="Condition Number",
+  height=800
+)
+
+fig.show()
+
+#Minimum score: 88.47%
+#Maximum score: 92.51%
+  \end{lstlisting}
+
+  \begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/kmeans1}
+    \caption{Comparison of $K$-means performance between 10 random
+      initializations.}%
+    \label{fig:kmeans1}
+  \end{figure} 
+
+  As we can see from Figure~\ref{fig:kmeans1}, the clustering score and inertia
+  seem to be uncorrelated. The maximum score reached is about 93\% and doesn't
+  seem to vary much between conditions. Below is displayed the result of a
+  $K$-means clustering with $K = 10$ and using the $k$-means++ algorithm with
+  10 repetitions for finding initial centroids (D. Arthur \textit{et al.},
+  2007).
+
+  \begin{lstlisting}[caption={Visualize $K$-means results using $t$-SNE.},
+    captionpos=b, label={lst:kmeanstsne}]
+# Perform k-means using 10 clusters, k-means++ and 10 repetitions.
+kmeans = KMeans(n_clusters=10, random_state=42).fit(X_norm)
+
+# Plot t-SNE visualization with infered labels.
+fig = go.Figure()
+
+for i in range(10):
+  fig.add_trace(go.Scatter(
+    x=X_tsne[kmeans.labels_==i, 0],
+    y=X_tsne[kmeans.labels_==i, 1],
+    mode="markers",
+    marker_color=i,
+    name="Infered Label: {}".format(i)
+  ))
+
+fig.update_layout(
+  title="t-SNE Visualization Of Handwritten Digits, K-means clustering",
+  height=800
+)
+    
+fig.show()
+  \end{lstlisting}
+
+  \begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/kmeanstsne}
+    \caption{$t$-SNE visualization of handwritten digits, labels infered using
+      $K$-means clustering.}%
+    \label{fig:kmeanstsne}
+  \end{figure} 
+
+  By comparing with the first $t$-SNE visualization, the $K$-means clustering
+  was able to correctly identify some of the clusters, but still fails on most
+  of them. For example, the ones are mostly absorbed in the original cluster of
+  eights, while the cluster of threes, fives and nines are merged into one
+  cluster.
+
+  Considering that the correct number of clusters was known beforehand, we are
+  now interested in knowing if this parameter can be infered from the data. The
+  performance and inertia of $K$-means clusterings with K varying from 5 to 20
+  is compared using Listing~\ref{lst:kmeans2} and the results are shown on
+  Figure~\ref{fig:kmeans2}.
+
+  \begin{lstlisting}[caption={Perform $K$-means clustering and compare
+    performance using varying number of clusters.}, captionpos=b,
+    label={lst:kmeans2}]
+# Store custom score and k-means inertias.
+scores = []
+inertias = []
+for n_clusters in range(5, 21):
+  # Perform k-means, using a fixed random state for reproducibility.
+  kmeans = KMeans(n_clusters=n_clusters, random_state=n_clusters).fit(X_norm)
+  labels = kmeans.labels_
+    
+  # Compute clustering score.
+  digit_pairs = np.zeros((n, n))
+  for i in range(0, n):
+    for j in range(i+1,n):
+      digit_pairs[i,j] = (labels[i]==labels[j] and y[i]== y[j]) or (labels[i]!=labels[j] and y[i]!=y[j])
+  scores.append(100*np.sum(digit_pairs)*2/(n*(n-1))) 
+  inertias.append(kmeans.inertia_)
+
+print("Minimum score: {:.2f}%".format(np.min(scores)))
+print("Maximum score: {:.2f}%".format(np.max(scores)))
+
+# Plot normalized criteria.
+fig = go.Figure()
+
+fig.add_trace(go.Bar(
+  x=list(range(5, 21)),
+  y=(scores - np.mean(scores)) / np.std(scores),
+  name="Clustering Score"
+))
+
+fig.add_trace(go.Bar(
+  x=list(range(5, 21)),
+  y=(inertias - np.mean(inertias)) / np.std(inertias),
+  name="Clustering Inertia"
+))
+
+fig.update_layout(
+  title="Normalized Clustering Score And Inertia",
+  xaxis_title="Condition Number",
+  height=800
+)
+
+fig.show()
+
+#Minimum score: 81.84%
+#Maximum score: 94.50%
+  \end{lstlisting}
+
+  \begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/kmeans2}
+    \caption{Comparison of $K$-means performance using varying number of
+      clusters.}%
+    \label{fig:kmeans2}
+  \end{figure} 
+
+  As expected from the structure complexity of this dataset, simply looking at
+  these criteria doesn't give any clue on the correct number of clusters that
+  one should use. When $K$ varies from 5 to 20, the inertia decreases: this is
+  expected, since adding more centroids will decrease the sum of distances of
+  samples to their closest cluster center. On the other hand, the clustering
+  score increases way past the $K = 10$ mark, without giving any clue on the
+  correct number of clusters.
+
+  Finally, we observed that $K$-means clustering alone wasn't able to
+  accurately find meaningful clusters or subclusters in the data. To improve
+  its performance, it should be applied after a dimensionality reduction step
+  such as PCA or MDS\@.
+
+  \subsection{Hierarchical clustering}
+
+  In this section, we will study a new clustering method: agglomerative
+  hierarchical clustering. In particular, we are interested in the effect of
+  different linkage methods on the resulting clusters:
+  \begin{itemize}
+    \item \textbf{ward} minimizes the sum of squared differences within all
+      clusters. It is a variance-minimizing approach and in this sense is
+      similar to the $K$-means objective function but tackled with an
+      agglomerative hierarchical approach;
+    \item \textbf{maximum or complete linkage} minimizes the maximum distance
+      between observations of pairs of clusters;
+    \item \textbf{average linkage} minimizes the average of the distances
+      between all observations of pairs of clusters;
+    \item \textbf{single linkage} minimizes the distance between the closest
+      observations of pairs of clusters.
+  \end{itemize}
+
+  Listing~\ref{lst:hclust} selects 25 samples of each of the first three digits
+  at random and performs the clustering using different linkage methods.
+  Figure~\ref{fig:hclust1} to~\ref{fig:hclust4} show the respective clustering
+  results using dendrograms.
+
+  \begin{lstlisting}[caption={Perform hierarchical clustering and display
+    dendrograms.}, captionpos=b, label={lst:hclust}]
+# Select 25 samples of each of the first three digits.
+n_samples = 25
+n_digits = 3
+samples = np.zeros((n_digits, n_samples, m))
+for i in range(n_digits):
+  idx = np.random.choice(np.where(y == i)[0], size=n_samples, replace=False)
+  samples[i] = X[idx]
+
+# Reshape samples into a single array.
+data_array = np.reshape(samples, (n_digits*n_samples, m))
+labels = [0]*25 + [1]*25 + [2]*25
+
+# Plot dendrogram for ward linkage.
+fig1 = ff.create_dendrogram(
+  data_array,
+  labels=labels,
+  linkagefun=lambda x: linkage(data_array, method="ward", metric="euclidean"),
+  orientation="bottom",
+  color_threshold=130
+)
+
+fig1.update_layout(title="Ward Linkage Dendrogram",
+  xaxis_title="True Digit",
+  yaxis_title="Distance Between Children"
+)
+
+fig1.show()
+
+# Plot dendrogram for average linkage.
+fig2 = ff.create_dendrogram(
+  data_array,
+  labels=labels,
+  linkagefun=lambda x: linkage(data_array, method="average", metric="euclidean"),
+  orientation="bottom",
+  color_threshold=40
+)
+
+fig2.update_layout(title="Average Linkage Dendrogram",
+  xaxis_title="True Digit",
+  yaxis_title="Distance Between Children"
+)
+
+fig2.show()
+
+# Plot dendrogram for complete linkage.
+fig3 = ff.create_dendrogram(
+  data_array,
+  labels=labels,
+  linkagefun=lambda x: linkage(data_array, method="complete", metric="euclidean"),
+  orientation="bottom",
+  color_threshold=48
+)
+
+fig3.update_layout(title="Complete Linkage Dendrogram",
+  xaxis_title="True Digit",
+  yaxis_title="Distance Between Children"
+)
+
+fig3.show()
+
+# Plot dendrogram for single linkage.
+fig4 = ff.create_dendrogram(
+  data_array,
+  labels=labels,
+  linkagefun=lambda x: linkage(data_array, method="single", metric="euclidean"),
+  orientation="bottom",
+  color_threshold=29
+)
+
+fig4.update_layout(
+  title="Single Linkage Dendrogram",
+  xaxis_title="True Digit",
+  yaxis_title="Distance Between Children"
+)
+
+fig4.show()
+  \end{lstlisting}
+
+  \begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/hclust1}
+    \caption{Dendrogram of ward linkage clustering.}%
+    \label{fig:hclust1}
+  \end{figure} 
+
+  \begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/hclust2}
+    \caption{Dendrogram of average linkage clustering.}%
+    \label{fig:hclust2}
+  \end{figure} 
+
+  \begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/hclust3}
+    \caption{Dendrogram of complete linkage clustering.}%
+    \label{fig:hclust3}
+  \end{figure} 
+
+  \begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/hclust4}
+    \caption{Dendrogram of single linkage clustering.}%
+    \label{fig:hclust4}
+  \end{figure} 
+
+  The color thresholds were fixed to identify meaningful clusters. We observe
+  on the dendrograms that for all linkage methods, the zeros are almost
+  perfectly clustered, in particular using single and ward linkage. However,
+  the ones and twos show more overlap: only the ward linkage shows almost
+  perfect clustering, while the average linkage displays minimal overlap.
+  Single and complete linkage aren't able to cluster these digits in a
+  meaningful way. This overlap between ones and twos is consistent with the
+  mis-grouping observed on the $t$-SNE visualization: this could indicate that
+  there is some interpenetration of these digits in the raw dataset.
+
+
 \end{document}

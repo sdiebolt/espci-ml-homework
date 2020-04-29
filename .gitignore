@@ -2,3 +2,6 @@
 .ipynb*
 winequality
 optdigits.tes
+*.aux
+*.log
+*.out
