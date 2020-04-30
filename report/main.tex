@@ -496,7 +496,43 @@
         \sigma_j + \sum_{j,k = 1}^p \gamma_{jk} \sigma_j \sigma_k\right),
     \end{split}
   \end{equation}
-  where $Z\equiv \exp(1 - \alpha)$ is the partition function.
+  where $Z\equiv \exp(1 - \alpha)$ is the partition function. In this case
+  however, the partition function can no longer be computed in a closed
+  form.
+
+  Considering the symmetry of the Lagrange multipliers, $\gamma_{jk} =
+  \gamma_{kj}$, and that $\sigma_j \sigma_k = 1$ if and only if $\sigma_j = 1$
+  and $\sigma_k = 1$, we can introduce a new set of parameters,
+  \begin{equation}
+    \begin{cases}
+      \delta_j = \beta_j + \gamma_{jj},\\
+      \epsilon_{jk} = 2\gamma_{jk},
+    \end{cases}
+  \end{equation}
+  and write the probability distribution as
+  \begin{equation}\label{eq:probadouble}
+    P(\bm{\sigma}) = \frac{1}{Z}\exp\left(\sum_{j = 1}^p \delta_j
+        \sigma_j + \sum_{1 \leq j < k \leq p} \epsilon_{jk} \sigma_j
+        \sigma_k\right),
+  \end{equation}
+
+  \begin{displayquote}
+    \itshape{}
+    What if we additionally constrain the three-way frequencies $f_{jkl}$ for
+    every $(j, k, l)$? And if we constrain all n-way frequencies for $n = 1,
+    \dots, p$?
+  \end{displayquote}
+
+  Equation~\eqref{eq:probadouble} generalizes easily to
+  \begin{equation}\label{eq:probadouble}
+    P(\bm{\sigma}) = \frac{1}{Z}\exp\left(\sum_{j = 1}^p \delta_j\sigma_j
+    + \sum_{1 \leq j < k \leq p} \epsilon_{jk} \sigma_j\sigma_k
+    + \sum_{1 \leq j < k < l \leq p} \zeta_{jkl} \sigma_j\sigma_k\sigma_l
+    + \cdots
+    \right).
+  \end{equation}
+  
+
 
   \newpage
   \section{Lasso regression and model selection: what makes a good wine?}
